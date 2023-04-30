@@ -37,35 +37,44 @@ const handleDragStart = () => {
   updateDragging();
   updateDraggingHtml();
   handleDragOver();
+  moveToColumn();
 }
 const handleDragEnd = () => {
   updateDragging();
   updateDraggingHtml();
   handleDragOver();
+  moveToColumn();
 }
 const handleHelpToggle = () => {
-  const helpOverlay = html.help.overlay
-  helpOverlay.style.display = 'block'
-  //const helpCancelButton = html.help.overlay
-  
+  const helpOverlay = html.help.overlay;
+  const helpCancel = html.help.cancel;
 
-}
+  if (helpOverlay.style.display === 'block') {
+    helpOverlay.style.display = 'none';
+  } else {
+    helpOverlay.style.display = 'block';
+  }
+
+  helpCancel.addEventListener('click', () => {
+    helpOverlay.style.display = 'none';
+  });
+};
+
 const handleAddToggle = () => {
   const addOverlay = html.add.overlay
   addOverlay.style.display = 'block'
-srOnlyElements.forEach(element => {
-  element.style.position = 'static';
-  element.style.clip = 'auto';
-  element.style.height = 'auto';
-  element.style.width = 'auto';
-  element.style.overflow = 'visible';
-  element.style.whiteSpace = 'normal';
-})
-
   createOrderHtml()
   createOrderData();
-  
+
+ 
 }
+const addCancelButton = document.querySelector('[data-add-cancel]')
+const addOverlay2 = html.add.overlay
+addCancelButton.addEventListener('click', ()=>{
+   addOverlay2.style.display = 'none'
+   
+  });
+
 
 const handleAddSubmit = (event) => {
     event.preventDefault()
@@ -76,20 +85,87 @@ const handleAddSubmit = (event) => {
   
     let orderData = createOrderData(order)
     html.add.overlay.style.display = ''
-    const bbb = createOrderHtml(orderData)
+    const changeOfOrder = createOrderHtml(orderData)
     const customerOrder = html.other.grid.querySelector('[data-column ="ordered"]')
-    customerOrder.innerHTML = bbb.innerHTML
+    customerOrder.innerHTML = changeOfOrder.innerHTML
   };
   
 
-const handleEditToggle = () => {}
-const handleEditSubmit = () => {
-       createOrderHtml();
-       createOrderData();
+const handleEditToggle = () => {
+    const editOverlay = html.edit.overlay;
+    const editForm = html.edit.form;
+    const editDeleteButton = html.edit.delete;
+    //const editCancel = html.edit.cancel;
+  
+    if (editOverlay.style.display === 'block') {
+      editOverlay.style.display = '';
+      editForm.reset();
+      editDeleteButton.style.display = 'none';
+    } else {
+      editOverlay.style.display = 'block';
+    }
+  }
+  
+
+const handleEditSubmit = (event) => {
+    event.preventDefault();
+  
+    // Get the order data from the form
+    const order = {
+      title: html.edit.title.value,
+      table: html.edit.table.value,
+    };
+     // Update the order data in the state
+     state.orders === state.orders.map((orderItem) => {
+      if (orderItem.id === state.dragging.id) {
+          return { ...orderItem, ...order };//spread operator
+      } else {
+          return orderItem;
+      }
+  });
+  const orderedColumn = html.other.grid.querySelector('[data-column="ordered"]');
+    const editedOrderElement = orderedColumn.querySelector(`[data-id="${state.dragging.id}"]`);
+    const orderData = createOrderData(order);
+    const newOrderHtml = createOrderHtml(orderData);
+    editedOrderElement.innerHTML = newOrderHtml.innerHTML;
+
+    updateDragging();
+    updateDraggingHtml();
+
+      // Hide the edit form and reset the delete button
+      const editOverlay = html.edit.overlay;
+      const editForm = html.edit.form;
+      const editDeleteButton = html.edit.delete;
+      editOverlay.style.display = '';
+      editForm.reset();
+      editDeleteButton.style.display = '';
+
 }
 const handleDelete = () => {
-  const deleteButton = document.querySelector('[data-edit-delete]')
-  deleteButton.style.display = 'block'
+
+  const deleteButton = html.edit.delete;
+  const editForm = html.edit.form;
+  const orderedColumn = html.other.grid.querySelector('[data-column="ordered"]');
+
+  if (deleteButton.style.display === 'block') {
+    // Delete the order data
+    state.orders = state.orders.filter((order) => order.id !== state.dragging.id);
+
+    // Update the HTML
+    const orderElement = orderedColumn.querySelector(`[data-id="${state.dragging.id}"]`);
+      if(orderElement){
+        orderElement.remove()
+      }
+    // Reset the dragging state
+    updateDragging();
+    updateDraggingHtml();
+
+    // Reset the form and hide the delete button
+    editForm.reset();
+    deleteButton.style.display = '';
+  } else {
+    deleteButton.style.display = 'block';
+  }
 }
 
 const addButton = document.querySelector('[data-add]')
