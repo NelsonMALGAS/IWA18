@@ -75,7 +75,6 @@ droppableTargets.forEach((target) => {
 });
 
 
-
 const handleDragStart = (event) => {
  event.dataTransfer.setData('text/html' , event.target.innerHTML)
   handleDragOver();
@@ -149,7 +148,7 @@ const handleEditToggle = () => {
     if (editOverlay.style.display === 'block') {
       editOverlay.style.display = '';
       editForm.reset();
-      editDeleteButton.style.display = 'none';
+      editDeleteButton.style.display = 'block';
     } else {
       editOverlay.style.display = 'block';
     }
@@ -172,8 +171,7 @@ const handleEditSubmit = (event) => {
       const editDeleteButton = html.edit.delete;
       editOverlay.style.display = '';
       editForm.reset(order);
-      editDeleteButton.style.display = 'block';
-
+      
 }
 const handleDelete = () => {
   document.querySelector('[data-order]').remove()
