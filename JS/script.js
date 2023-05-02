@@ -1,4 +1,4 @@
-import {state , COLUMNS , createOrderData , TABLES , updateDragging } from './data.js'
+import {state , COLUMNS , createOrderData  , updateDragging } from './data.js'
 import {createOrderHtml , createTableOptionsHtml ,html ,updateDraggingHtml ,moveToColumn} from './view.js'
 
 /**
@@ -17,7 +17,7 @@ import {createOrderHtml , createTableOptionsHtml ,html ,updateDraggingHtml ,move
 const handleDragOver = (event) => {
   event.preventDefault();
   const path = event.path || event.composedPath()
-  let column = null
+  let column = ''
 
   for (const element of path) {
       const { area } = element.dataset
@@ -30,21 +30,66 @@ const handleDragOver = (event) => {
   if (!column) return
   updateDragging({ over: column })
   updateDraggingHtml({ over: column })
+  //moveToColumn();
 }
 
+// Get all draggable elements
+const draggableElements = document.querySelectorAll('[draggable="true"]');
 
-const handleDragStart = () => {
-  updateDragging();
-  updateDraggingHtml();
+// Add event listeners for drag start and end
+draggableElements.forEach((element) => {
+  element.addEventListener('dragstart', (event) => {
+    event.dataTransfer.setData('text/plain', event.target.dataset.id);
+    event.target.classList.add('dragging');
+  });
+
+  element.addEventListener('dragend', (event) => {
+    event.target.classList.remove('dragging');
+  });
+});
+
+// Get all droppable targets
+const droppableTargets = document.querySelectorAll('[data-column]');
+
+// Add event listeners for drag over and drop
+droppableTargets.forEach((target) => {
+  target.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    target.classList.add('dragover');
+  });
+
+  target.addEventListener('dragleave', () => {
+    target.classList.remove('dragover');
+  });
+
+  target.addEventListener('drop', (event) => {
+    event.preventDefault();
+    const column = event.target.closest('[data-column]');
+    const orderId = event.dataTransfer.getData('text/plain');
+    const orderElement = document.querySelector(`[data-id="${orderId}"]`);
+
+    if (column && orderId && orderElement) {
+      column.appendChild(orderElement);
+    }
+  });
+});
+
+
+
+const handleDragStart = (event) => {
+ event.dataTransfer.setData('text/html' , event.target.innerHTML)
   handleDragOver();
-  moveToColumn();
+   updateDragging();
+   updateDraggingHtml();
+    
 }
-const handleDragEnd = () => {
-  updateDragging();
-  updateDraggingHtml();
-  handleDragOver();
-  moveToColumn();
-}
+
+ const handleDragEnd = () => {
+   updateDragging();
+   updateDraggingHtml();
+   handleDragOver();
+   moveToColumn();
+ }
 const handleHelpToggle = () => {
   const helpOverlay = html.help.overlay;
   const helpCancel = html.help.cancel;
@@ -56,22 +101,24 @@ const handleHelpToggle = () => {
   }
 
   helpCancel.addEventListener('click', () => {
+    html.add.form.reset()
     helpOverlay.style.display = 'none';
+    
   });
 };
 
-const handleAddToggle = () => {
+  const handleAddToggle = () => {
   const addOverlay = html.add.overlay
   addOverlay.style.display = 'block'
-  createOrderHtml()
-  createOrderData();
-
  
 }
-const addCancelButton = document.querySelector('[data-add-cancel]')
-const addOverlay2 = html.add.overlay
-addCancelButton.addEventListener('click', ()=>{
+  const addCancelButton = document.querySelector('[data-add-cancel]')
+  const addOverlay2 = html.add.overlay
+  const addForm = html.add.form
+  addCancelButton.addEventListener('click', ()=>{
    addOverlay2.style.display = 'none'
+   addOverlay2.reset() 
+    addForm.reset()
    
   });
 
@@ -80,14 +127,17 @@ const handleAddSubmit = (event) => {
     event.preventDefault()
   const order ={
     title : html.add.title.value,
-    table : html.add.table.value
+    table : html.add.table.value,
+    column : 'ordered'
   }
-  
+    
     let orderData = createOrderData(order)
     html.add.overlay.style.display = ''
     const changeOfOrder = createOrderHtml(orderData)
-    const customerOrder = html.other.grid.querySelector('[data-column ="ordered"]')
-    customerOrder.innerHTML = changeOfOrder.innerHTML
+    const customerOrder = html.other.grid.querySelector(`[data-column ="${orderData.column}"]`)
+    customerOrder.innerHTML += changeOfOrder.innerHTML
+    customerOrder.setAttribute('draggable', true);
+    
   };
   
 
@@ -95,8 +145,7 @@ const handleEditToggle = () => {
     const editOverlay = html.edit.overlay;
     const editForm = html.edit.form;
     const editDeleteButton = html.edit.delete;
-    //const editCancel = html.edit.cancel;
-  
+    
     if (editOverlay.style.display === 'block') {
       editOverlay.style.display = '';
       editForm.reset();
@@ -114,63 +163,60 @@ const handleEditSubmit = (event) => {
     const order = {
       title: html.edit.title.value,
       table: html.edit.table.value,
+
     };
-     // Update the order data in the state
-     state.orders === state.orders.map((orderItem) => {
-      if (orderItem.id === state.dragging.id) {
-          return { ...orderItem, ...order };//spread operator
-      } else {
-          return orderItem;
-      }
-  });
-  const orderedColumn = html.other.grid.querySelector('[data-column="ordered"]');
-    const editedOrderElement = orderedColumn.querySelector(`[data-id="${state.dragging.id}"]`);
-    const orderData = createOrderData(order);
-    const newOrderHtml = createOrderHtml(orderData);
-    editedOrderElement.innerHTML = newOrderHtml.innerHTML;
-
-    updateDragging();
-    updateDraggingHtml();
-
+       
       // Hide the edit form and reset the delete button
       const editOverlay = html.edit.overlay;
       const editForm = html.edit.form;
       const editDeleteButton = html.edit.delete;
       editOverlay.style.display = '';
-      editForm.reset();
-      editDeleteButton.style.display = '';
+      editForm.reset(order);
+      editDeleteButton.style.display = 'block';
 
 }
 const handleDelete = () => {
-
-  const deleteButton = html.edit.delete;
-  const editForm = html.edit.form;
-  const orderedColumn = html.other.grid.querySelector('[data-column="ordered"]');
-
-  if (deleteButton.style.display === 'block') {
-    // Delete the order data
-    state.orders = state.orders.filter((order) => order.id !== state.dragging.id);
-
-    // Update the HTML
-    const orderElement = orderedColumn.querySelector(`[data-id="${state.dragging.id}"]`);
-      if(orderElement){
-        orderElement.remove()
-      }
-    // Reset the dragging state
-    updateDragging();
-    updateDraggingHtml();
-
-    // Reset the form and hide the delete button
-    editForm.reset();
-    deleteButton.style.display = '';
-  } else {
-    deleteButton.style.display = 'block';
-  }
+  document.querySelector('[data-order]').remove()
+  html.edit.form.reset()
+  
 }
+
+const updateButton = document.querySelector('button[type="submit"][form="edit-form"]')
+
+const updateEdit =(event)=>{
+  html.edit.overlay.style.display = '';
+  event.preventDefault()
+  const order1 ={
+    title : html.edit.title.value,
+    table : html.edit.table.value,
+    column : html.edit.column.value
+  }
+  
+    
+    let orderData = createOrderData(order1)
+    html.add.overlay.style.display = ''
+    const changeOfOrder1 = createOrderHtml(orderData)
+    const customerOrder1 = html.other.grid.querySelector(`[data-column ="${orderData.column}"]`)
+    customerOrder1.innerHTML = changeOfOrder1.innerHTML
+    customerOrder1.setAttribute('draggable', true);
+
+    customerOrder1.querySelector('[data-edit-title]').innerHTML === order1.title;
+    customerOrder1.querySelector('[data-edit-table]').innerHTML === order1.table;
+
+    const orderedColumn = html.other.grid.querySelector(`[data-column ="${orderData.column}"]`);
+    const orderToRemove = orderedColumn.querySelector(`[data-id="${orderData.id}"]`);
+    orderedColumn.removeChild(orderToRemove);
+
+    const newOrder = createOrderHtml(orderData)
+    newOrder.setAttribute('draggable' , true)
+    
+
+  };
 
 const addButton = document.querySelector('[data-add]')
 
 addButton.addEventListener('click', handleAddToggle)
+updateButton.addEventListener('click', updateEdit)
 html.other.add.addEventListener('click', handleAddToggle)
 html.add.form.addEventListener('submit', handleAddSubmit)
 
